@@ -14,7 +14,7 @@ using namespace cv;
 
 class FaceDetector {
 public:
-    FaceDetector();
+    FaceDetector(string face_cascadePath, string eyes_cascadePath);
     ~FaceDetector();
     void findFacesInImage(Mat &frameRGB, Mat &toTest);
     bool goodFace();

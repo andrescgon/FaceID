@@ -2,47 +2,46 @@
 
 #define SHOW_IMAGE 0
 
-MyPCA::MyPCA(vector<string>& _facesPath)
+MyPCA::MyPCA(vector<Mat>& _facesMat)
 {
-	init(_facesPath);
+	init(_facesMat);
 }
 
-void MyPCA::init(vector<string>& _facesPath)
+void MyPCA::init(vector<Mat>& _facesMat)
 {
-    getImgSize(_facesPath);
-    imgRows = imread(_facesPath[0],0).rows;
-    mergeMatrix(_facesPath);
+    if(_facesMat.empty()) return;
+    getImgSize(_facesMat);
+    imgRows = _facesMat[0].rows;
+    mergeMatrix(_facesMat);
     getAverageVector();
     subtractMatrix();
     Mat _covarMatrix = (subFacesMatrix.t()) * subFacesMatrix;
     getBestEigenVectors(_covarMatrix);
 }
 
-void MyPCA:: getImgSize(vector<string>& _facesPath)
+void MyPCA:: getImgSize(vector<Mat>& _facesMat)
 {
-    Mat sampleImg = imread(_facesPath[0], 0);
+    Mat sampleImg = _facesMat[0];
     if (sampleImg.empty()) {
         cout << "Fail to Load Image in PCA" << endl;
     }
     //Dimession of Features
     imgSize = sampleImg.rows * sampleImg.cols;
-    //cout << "Per Image Size is: " << size << endl;
 }
 //put all face images to one matrix, order in column
-void MyPCA::mergeMatrix(vector<string>& _facesPath)
+void MyPCA::mergeMatrix(vector<Mat>& _facesMat)
 {
-    int col = int(_facesPath.size());
+    int col = int(_facesMat.size());
     allFacesMatrix.create(imgSize, col, CV_32FC1);
     
     for (int i = 0; i < col; i++) {
         Mat tmpMatrix = allFacesMatrix.col(i);
         //Load grayscale image 0
         Mat tmpImg;
-        imread(_facesPath[i], 0).convertTo(tmpImg, CV_32FC1);
+        _facesMat[i].convertTo(tmpImg, CV_32FC1);
         //convert to 1D matrix
         tmpImg.reshape(1, imgSize).copyTo(tmpMatrix);
     }
-    //cout << "Merged Matix(Width, Height): " << mergedMatrix.size() << endl;
 }
 //compute average face
 void MyPCA::getAverageVector()

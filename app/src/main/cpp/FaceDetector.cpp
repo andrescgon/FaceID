@@ -2,34 +2,28 @@
 
 #include "FaceDetector.h"
 
-FaceDetector::FaceDetector()
+FaceDetector::FaceDetector(string face_cascadePath, string eyes_cascadePath)
 {
-    String face_cascadePath = "c:/Users/Dumah/Desktop/Proyect/FaceRecognition_PCA/FRG/haarcascade/haarcascade_frontalface_default.xml";
-    String eyes_cascadePath = "c:/Users/Dumah/Desktop/Proyect/FaceRecognition_PCA/FRG/haarcascade/haarcascade_eye.xml";
-    //haarcascade_eye_tree_eyeglasses
-    
     if ( !face_cascade.load(face_cascadePath) )
         cout << "ERROR:***Can not load face cascade***" << endl;
     
     if ( !eye_cascade.load(eyes_cascadePath) )
         cout << "ERROR:***Can not load eye cascade***" << endl;
-    
 }
-//Eye detection accuracy is very bad, so don't check the rotation angle
 void FaceDetector::findFacesInImage(Mat &frameRGB, Mat &toTest) {
     Mat frameGray;
+    faceFlag = 0; // Reset flag
     
-    toTest = Mat::zeros(480, 480, frameRGB.type());
-    for (int i = 0; i < toTest.cols; i++) {
-        frameRGB.col(80 + i).copyTo(toTest.col(i));
-    }
+    // Copy input safely
+    toTest = frameRGB.clone();
     
-    //convert the image to grayscale and normalize histogram:
-    resize(toTest, toTest, Size(240, 240));
+    // We resize image down for faster processing and to have consistent proportions
+    // Android cameras send huge images, e.g., 1920x1080.
+    double scale = 480.0 / std::max(toTest.cols, toTest.rows);
+    if(scale < 1.0) resize(toTest, toTest, Size(), scale, scale);
+    
     cvtColor(toTest, frameGray, COLOR_BGR2GRAY);
-    Mat toReturn;
-    frameGray.copyTo(toReturn);
-    //cout << toTest.size() << endl;
+    Mat toReturn = toTest.clone();
     equalizeHist(frameGray, frameGray);
     
     vector<Rect> facesRec;
@@ -45,6 +39,7 @@ void FaceDetector::findFacesInImage(Mat &frameRGB, Mat &toTest) {
         //cout << "ROI SIZE " << faceROI.size() << endl;
         faceROI.copyTo(faceToTest);
         resize(faceToTest, faceToTest, Size(100,100));
+        cvtColor(faceToTest, faceToTest, COLOR_BGR2GRAY); // Crucial for PCA
         faceFlag = 1;
         
         vector<Rect> eyes;

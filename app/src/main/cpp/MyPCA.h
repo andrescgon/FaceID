@@ -15,10 +15,10 @@ using namespace cv;
 class MyPCA {
 
 public:
-	MyPCA(vector<string>& _facesPath);
-	void init(vector<string>& _facesPath);
-    void getImgSize(vector<string>& _facesPath);
-    void mergeMatrix(vector<string>& _facesPath);
+	MyPCA(vector<Mat>& _facesMat);
+	void init(vector<Mat>& _facesMat);
+    void getImgSize(vector<Mat>& _facesMat);
+    void mergeMatrix(vector<Mat>& _facesMat);
     void getAverageVector();
     void subtractMatrix();
     void getBestEigenVectors(Mat _covarMatrix);

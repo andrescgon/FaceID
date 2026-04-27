@@ -18,7 +18,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += "-std=c++14"
-                arguments("-DANDROID_STL=c++_shared", "-DOpenCV_DIR=C:/OpenCV-Android/OpenCV-android-sdk/sdk/native/jni")
+                arguments("-DANDROID_STL=c++_shared", "-DOpenCV_DIR=" + project.rootDir.absolutePath.replace("\\", "/") + "/opencv/native/jni")
             }
         }
     }

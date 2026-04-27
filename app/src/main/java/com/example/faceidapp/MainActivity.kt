@@ -1,6 +1,7 @@
 package com.example.faceidapp
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -12,6 +13,9 @@ import androidx.core.content.ContextCompat
 import org.opencv.android.CameraBridgeViewBase
 import org.opencv.android.OpenCVLoader
 import org.opencv.core.Mat
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 
 class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -20,22 +24,16 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        
+        cameraView = findViewById(R.id.camera_view)
+        cameraView.setCvCameraViewListener(this)
+        cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_FRONT)
 
-        // Request Camera Permission
+        // Request Camera Permission safely
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1)
-        }
-
-        cameraView = findViewById(R.id.camera_view)
-        cameraView.setCameraPermissionGranted()
-        cameraView.setCvCameraViewListener(this)
-
-        if (OpenCVLoader.initLocal()) {
-            Log.d("OpenCV", "OpenCV loaded successfully")
-            cameraView.enableView()
         } else {
-            Log.e("OpenCV", "OpenCV failed to load")
-            Toast.makeText(this, "Error cargando OpenCV", Toast.LENGTH_LONG).show()
+            activateOpenCVCamera()
         }
 
         findViewById<Button>(R.id.btn_prepare).setOnClickListener {
@@ -51,8 +49,53 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             Toast.makeText(this, "Modo: Reconocer", Toast.LENGTH_SHORT).show()
         }
 
-        // Initialize Native logic
-        initNative("dummy_path")
+        // Load cascades and pass to native
+        val facePath = loadCascadeFile(R.raw.haarcascade_frontalface_default, "haarcascade_frontalface_default.xml")
+        val eyePath = loadCascadeFile(R.raw.haarcascade_eye, "haarcascade_eye.xml")
+        initNative(facePath, eyePath)
+    }
+
+    private fun loadCascadeFile(resourceId: Int, cascadeName: String): String {
+        try {
+            val isStream: InputStream = resources.openRawResource(resourceId)
+            val cascadeDir: File = getDir("cascade", Context.MODE_PRIVATE)
+            val cascadeFile = File(cascadeDir, cascadeName)
+            
+            if (!cascadeFile.exists()) {
+                val os = FileOutputStream(cascadeFile)
+                val buffer = ByteArray(4096)
+                var bytesRead: Int
+                while (isStream.read(buffer).also { bytesRead = it } != -1) {
+                    os.write(buffer, 0, bytesRead)
+                }
+                isStream.close()
+                os.close()
+            }
+            return cascadeFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ""
+        }
+    }
+
+    private fun activateOpenCVCamera() {
+        cameraView.setCameraPermissionGranted()
+        if (OpenCVLoader.initLocal()) {
+            Log.d("OpenCV", "OpenCV loaded successfully")
+            cameraView.enableView()
+        } else {
+            Log.e("OpenCV", "OpenCV failed to load")
+            Toast.makeText(this, "Error cargando OpenCV", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            activateOpenCVCamera()
+        } else {
+            Toast.makeText(this, "Camera permission required", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onCameraViewStarted(width: Int, height: Int) {}
@@ -60,7 +103,6 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
     override fun onCameraFrame(inputFrame: CameraBridgeViewBase.CvCameraViewFrame): Mat {
         val mat = inputFrame.rgba()
-        // Pass frame to C++
         processFrame(mat.nativeObjAddr)
         return mat
     }
@@ -70,13 +112,9 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         cameraView.disableView()
     }
 
-    /**
-     * A native method that is implemented by the 'faceidapp' native library,
-     * which is packaged with this application.
-     */
     external fun processFrame(matAddr: Long)
     external fun setMode(mode: Int)
-    external fun initNative(cascadePath: String)
+    external fun initNative(faceCascade: String, eyesCascade: String)
 
     companion object {
         init {
