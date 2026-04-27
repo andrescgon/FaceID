@@ -16,10 +16,18 @@ import org.opencv.core.Mat
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import android.widget.Spinner
+import android.widget.ArrayAdapter
+import android.widget.AdapterView
+import android.view.View
 
 class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2 {
 
     private lateinit var cameraView: CameraBridgeViewBase
+    private lateinit var btnPrepare: Button
+    private lateinit var btnTrain: Button
+    private lateinit var btnRecognize: Button
+    private lateinit var spinnerImages: Spinner
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +44,12 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             activateOpenCVCamera()
         }
 
-        findViewById<Button>(R.id.btn_prepare).setOnClickListener {
+        btnPrepare = findViewById(R.id.btn_prepare)
+        btnTrain = findViewById(R.id.btn_train)
+        btnRecognize = findViewById(R.id.btn_recognize)
+        spinnerImages = findViewById(R.id.spinner_images)
+
+        btnPrepare.setOnClickListener {
             setMode(0)
             Toast.makeText(this, "Modo: Preparar", Toast.LENGTH_SHORT).show()
         }
@@ -53,6 +66,21 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         val facePath = loadCascadeFile(R.raw.haarcascade_frontalface_default, "haarcascade_frontalface_default.xml")
         val eyePath = loadCascadeFile(R.raw.haarcascade_eye, "haarcascade_eye.xml")
         initNative(facePath, eyePath)
+
+        val imageOptions = arrayOf(5, 10, 30, 50, 100)
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, imageOptions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerImages.adapter = adapter
+
+        // Set default selection to "10" (which is index 1)
+        spinnerImages.setSelection(1) 
+
+        spinnerImages.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                setMaxImages(imageOptions[position])
+            }
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
     }
 
     private fun loadCascadeFile(resourceId: Int, cascadeName: String): String {
@@ -114,6 +142,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
     external fun processFrame(matAddr: Long)
     external fun setMode(mode: Int)
+    external fun setMaxImages(images: Int)
     external fun initNative(faceCascade: String, eyesCascade: String)
 
     companion object {

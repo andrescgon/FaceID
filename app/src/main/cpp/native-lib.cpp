@@ -20,6 +20,12 @@ WriteTrainData *trainData = nullptr;
 std::vector<Mat> trainingFaces;
 std::vector<string> trainingLabels;
 bool isModelTrained = false;
+int maxRealImages = 10; // Default
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_example_faceidapp_MainActivity_setMaxImages(JNIEnv *env, jobject thiz, jint images) {
+    maxRealImages = images;
+}
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_example_faceidapp_MainActivity_initNative(JNIEnv *env, jobject thiz,
@@ -59,10 +65,12 @@ Java_com_example_faceidapp_MainActivity_setMode(JNIEnv *env, jobject thiz,
 extern "C" JNIEXPORT void JNICALL
 Java_com_example_faceidapp_MainActivity_processFrame(JNIEnv *env, jobject thiz,
                                                      jlong matAddr) {
-  Mat &frame = *(Mat *)matAddr;
+  Mat &rawFrame = *(Mat *)matAddr;
 
-  // Flip horizontal in-place at the very beginning to mirror the camera but NOT
-  // the text
+  Mat frame;
+  // Rotate 270 CW (90 CCW) to match the Canvas rotation exactly into an upright logical buffer
+  cv::rotate(rawFrame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
+  // Mirror for Selfie Camera feeling
   cv::flip(frame, frame, 1);
 
   if (faceDetector != nullptr) {
@@ -80,14 +88,15 @@ Java_com_example_faceidapp_MainActivity_processFrame(JNIEnv *env, jobject thiz,
     bool goodFace = faceDetector->goodFace();
     Mat faceMat = faceDetector->getFaceToTest();
 
-    // Remove cv::flip here. Java already sent a flipped, user-facing frame. If
-    // we flip before putText and then after, text becomes mirrored!
-
     if (currentMode == 0) {
       putText(frame, "Modo: Preparar", Point(50, 80), FONT_HERSHEY_SIMPLEX, 1.5,
               Scalar(0, 255, 0, 255), 3);
     } else if (currentMode == 1) {
-      if (goodFace && !faceMat.empty() && trainingFaces.size() < 30) {
+        // maxRealImages define cuántas caras reales se tomarán. 
+        // Como se mutliplica por 3 (por la rotación matemática), el total será maxRealImages * 3.
+        int limitFaces = maxRealImages * 3;
+
+      if (goodFace && !faceMat.empty() && trainingFaces.size() < limitFaces) {
         trainingFaces.push_back(faceMat.clone());
         trainingLabels.push_back("Propietario");
 
@@ -107,11 +116,11 @@ Java_com_example_faceidapp_MainActivity_processFrame(JNIEnv *env, jobject thiz,
       }
 
       putText(frame,
-              "Entrenando: " + to_string(trainingFaces.size() / 3) + "/10 imgs",
+              "Entrenando: " + to_string(trainingFaces.size() / 3) + "/" + to_string(maxRealImages) + " imgs",
               Point(50, 80), FONT_HERSHEY_SIMPLEX, 1.5,
               Scalar(0, 255, 255, 255), 3);
 
-      if (trainingFaces.size() >= 30 && !isModelTrained) {
+      if (trainingFaces.size() >= limitFaces && !isModelTrained) {
         myPCA = new MyPCA(trainingFaces);
         trainData = new WriteTrainData(*myPCA, trainingLabels);
         isModelTrained = true;
@@ -144,7 +153,9 @@ Java_com_example_faceidapp_MainActivity_processFrame(JNIEnv *env, jobject thiz,
                 FONT_HERSHEY_SIMPLEX, 1.5, Scalar(255, 0, 0, 255), 3);
       }
     }
-
-    // Remove cv::flip here.
   }
+  
+  // FINALLY: Undo only the rotation to not crash Java memory matching. 
+  // We DO NOT undo the flip, so the user sees a Mirrored Camera feed, and the Text remains perfectly readable.
+  cv::rotate(frame, rawFrame, cv::ROTATE_90_CLOCKWISE);
 }

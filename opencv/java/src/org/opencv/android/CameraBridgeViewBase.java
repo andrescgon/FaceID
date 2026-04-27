@@ -429,18 +429,33 @@ public abstract class CameraBridgeViewBase extends SurfaceView implements Surfac
                 if (BuildConfig.DEBUG)
                     Log.d(TAG, "mStretch value: " + mScale);
 
-                if (mScale != 0) {
-                    canvas.drawBitmap(mCacheBitmap, new Rect(0,0,mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
-                         new Rect((int)((canvas.getWidth() - mScale*mCacheBitmap.getWidth()) / 2),
-                         (int)((canvas.getHeight() - mScale*mCacheBitmap.getHeight()) / 2),
-                         (int)((canvas.getWidth() - mScale*mCacheBitmap.getWidth()) / 2 + mScale*mCacheBitmap.getWidth()),
-                         (int)((canvas.getHeight() - mScale*mCacheBitmap.getHeight()) / 2 + mScale*mCacheBitmap.getHeight())), null);
+                if (canvas.getHeight() > canvas.getWidth()) { // PORTRAIT MODE MAGIC
+                    android.graphics.Matrix matrix = new android.graphics.Matrix();
+                    // Center the origin of rotation
+                    matrix.postTranslate(-mCacheBitmap.getWidth() / 2.0f, -mCacheBitmap.getHeight() / 2.0f);
+                    // Rotate 270 clockwise (or 90 counter-clockwise) to turn the sideways landscape into upright portrait.
+                    // For typical front camera on Android portrait, we need 270 relative to the native horizontal frame.
+                    matrix.postRotate(270); 
+                    // Calculate scale to fill width/height properly based on the *swapped* dimensions
+                    float scale = Math.max((float)canvas.getWidth() / mCacheBitmap.getHeight(), (float)canvas.getHeight() / mCacheBitmap.getWidth());
+                    matrix.postScale(scale, scale);
+                    // Translate back to the center of the Canvas
+                    matrix.postTranslate(canvas.getWidth() / 2.0f, canvas.getHeight() / 2.0f);
+                    canvas.drawBitmap(mCacheBitmap, matrix, null);
                 } else {
-                     canvas.drawBitmap(mCacheBitmap, new Rect(0,0,mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
-                         new Rect((canvas.getWidth() - mCacheBitmap.getWidth()) / 2,
-                         (canvas.getHeight() - mCacheBitmap.getHeight()) / 2,
-                         (canvas.getWidth() - mCacheBitmap.getWidth()) / 2 + mCacheBitmap.getWidth(),
-                         (canvas.getHeight() - mCacheBitmap.getHeight()) / 2 + mCacheBitmap.getHeight()), null);
+                    if (mScale != 0) {
+                        canvas.drawBitmap(mCacheBitmap, new Rect(0,0,mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
+                             new Rect((int)((canvas.getWidth() - mScale*mCacheBitmap.getWidth()) / 2),
+                             (int)((canvas.getHeight() - mScale*mCacheBitmap.getHeight()) / 2),
+                             (int)((canvas.getWidth() - mScale*mCacheBitmap.getWidth()) / 2 + mScale*mCacheBitmap.getWidth()),
+                             (int)((canvas.getHeight() - mScale*mCacheBitmap.getHeight()) / 2 + mScale*mCacheBitmap.getHeight())), null);
+                    } else {
+                         canvas.drawBitmap(mCacheBitmap, new Rect(0,0,mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
+                             new Rect((canvas.getWidth() - mCacheBitmap.getWidth()) / 2,
+                             (canvas.getHeight() - mCacheBitmap.getHeight()) / 2,
+                             (canvas.getWidth() - mCacheBitmap.getWidth()) / 2 + mCacheBitmap.getWidth(),
+                             (canvas.getHeight() - mCacheBitmap.getHeight()) / 2 + mCacheBitmap.getHeight()), null);
+                    }
                 }
 
                 if (mFpsMeter != null) {

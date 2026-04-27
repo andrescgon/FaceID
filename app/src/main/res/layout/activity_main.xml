@@ -11,8 +11,33 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/buttons_layout"
+        app:layout_constraintBottom_toTopOf="@+id/settings_layout"
         app:camera_id="front"/>
+
+    <LinearLayout
+        android:id="@+id/settings_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="#88000000"
+        app:layout_constraintBottom_toTopOf="@+id/buttons_layout">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="N° de Imágenes:"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginEnd="10dp"/>
+            
+        <Spinner
+            android:id="@+id/spinner_images"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#FFFFFF" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/buttons_layout"
